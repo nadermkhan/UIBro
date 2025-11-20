@@ -41,9 +41,5 @@ set_target_properties(UIBro PROPERTIES
     OUTPUT_NAME "uibro"
 )
 
-# Copy example files to build directory
-configure_file(${CMAKE_SOURCE_DIR}/example.ui ${CMAKE_BINARY_DIR}/bin/example.ui COPYONLY)
-
 # Installation
 install(TARGETS UIBro RUNTIME DESTINATION bin)
-install(FILES example.ui DESTINATION bin)
