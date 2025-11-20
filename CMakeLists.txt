@@ -97,7 +97,6 @@ target_link_libraries(UIBro PRIVATE
     shell32         # Shell API
     user32          # User Interface
     gdi32           # Graphics Device Interface
-    runtimeobject   # Windows Runtime
 )
 
 # Set target properties
