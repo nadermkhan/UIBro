@@ -1,134 +1,76 @@
 #include "UIBro.hpp"
-#include <iostream>
-#include <shlwapi.h>
-#pragma comment(lib, "shlwapi.lib")
 
-void printUsage() {
-    std::cout << R"(
-UIBro - Windows 10 UI Framework
-Version 3.1.0
-
-USAGE:
-    uibro <script.ui>       Run a UI script file
-    uibro --help            Show this help message
-    uibro --version         Show version information
-
-EXAMPLES:
-    uibro app.ui            Run app.ui script
-    uibro myform.ui         Run myform.ui script
-
-SCRIPT SYNTAX:
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, PWSTR /*pCmdLine*/, int /*nCmdShow*/) {
+    // Initialize WTL
+    HRESULT hRes = ::CoInitialize(NULL);
+    ATLASSERT(SUCCEEDED(hRes));
+    
+    AtlInitCommonControls(ICC_BAR_CLASSES);
+    
+    hRes = _Module.Init(NULL, hInstance);
+    ATLASSERT(SUCCEEDED(hRes));
+    
+    // Initialize DPI
+    UIBro::DPIManager::Initialize();
+    
     // Create window
-    win = Window.title("My App").size(800, 600).center();
+    UIBro::Window window;
+    window.title(L"UIBro WTL Demo")
+          ->size(600, 400)
+          ->center();
     
     // Add components
-    label = win.addLabel("Hello World").position(20, 20).size(300, 30);
-    btn = win.addButton("Click Me").position(20, 60).size(100, 30);
-    input = win.addInput("Type here").position(20, 100).size(200, 24);
+    auto* titleLabel = window.addLabel(L"Welcome to UIBro WTL");
+    titleLabel->position(20, 20)->size(560, 30)->font(18, FW_BOLD);
     
-    // Add event handlers
-    btn.onClick();
+    auto* nameLabel = window.addLabel(L"Enter your name:");
+    nameLabel->position(20, 60)->size(150, 20);
     
-    // Conditional logic
-    if (condition) {
-        Notification.show("Title", "Message");
-    }
-
-COMPONENTS:
-    Window, Button, Label, Input, CheckBox, ComboBox, 
-    ProgressBar, GroupBox, Notification
-
-For more information, visit: https://github.com/nadermkhan/UIBro/
-)" << std::endl;
-}
-
-void printVersion() {
-    std::cout << "UIBro v3.1.0 - Windows 10 Native UI Framework" << std::endl;
-    std::cout << "Built with MSVC - Windows Runtime" << std::endl;
-    std::cout << "Copyright (c) 2024 - MIT License" << std::endl;
-}
-
-bool fileExists(const std::string& filename) {
-    return PathFileExistsA(filename.c_str()) == TRUE;
-}
-
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
-    // Get command line arguments
-    int argc;
-    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    auto* nameInput = window.addInput(L"Type here...");
+    nameInput->position(20, 85)->size(300, 25);
     
-    // Convert to regular strings
-    std::vector<std::string> args;
-    for (int i = 0; i < argc; i++) {
-        int size = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, NULL, 0, NULL, NULL);
-        std::string str(size, 0);
-        WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, &str[0], size, NULL, NULL);
-        str.resize(size - 1); // Remove null terminator
-        args.push_back(str);
-    }
-    LocalFree(argv);
+    auto* submitBtn = window.addButton(L"Submit");
+    submitBtn->position(20, 120)->size(100, 30);
+    submitBtn->setDefault(true);
+    submitBtn->onClick([&nameInput]() {
+        std::wstring name = nameInput->getValue();
+        if (!name.empty()) {
+            UIBro::Notification::show(L"Hello", L"Hello, " + name + L"!");
+        } else {
+            UIBro::Notification::showWarning(L"Warning", L"Please enter your name first!");
+        }
+    });
     
-    // Allocate console for output
-    AllocConsole();
-    FILE* fp;
-    freopen_s(&fp, "CONOUT$", "w", stdout);
-    freopen_s(&fp, "CONOUT$", "w", stderr);
-    freopen_s(&fp, "CONIN$", "r", stdin);
+    auto* clearBtn = window.addButton(L"Clear");
+    clearBtn->position(130, 120)->size(100, 30);
+    clearBtn->onClick([&nameInput]() {
+        nameInput->setValue(L"");
+    });
     
-    // Parse arguments
-    if (argc == 1) {
-        // No arguments - show usage
-        printUsage();
-        std::cout << "\nError: No script file specified!" << std::endl;
-        std::cout << "\nPress Enter to exit...";
-        std::cin.get();
-        return 1;
-    }
+    auto* agreeCheck = window.addCheckBox(L"I agree to terms");
+    agreeCheck->position(20, 160)->size(200, 20);
     
-    std::string firstArg = args[1];
+    // GroupBox with controls
+    auto* group = window.addGroupBox(L"Options");
+    group->position(20, 190)->size(350, 150);
     
-    // Handle flags
-    if (firstArg == "--help" || firstArg == "-h") {
-        printUsage();
-        std::cout << "\nPress Enter to exit...";
-        std::cin.get();
-        return 0;
-    }
+    auto* optLabel = group->addLabel(L"Select options:");
+    optLabel->position(10, 25)->size(200, 20);
     
-    if (firstArg == "--version" || firstArg == "-v") {
-        printVersion();
-        std::cout << "\nPress Enter to exit...";
-        std::cin.get();
-        return 0;
-    }
+    auto* opt1 = group->addCheckBox(L"Option 1");
+    opt1->position(10, 50)->size(150, 20);
     
-    // Check if file exists
-    if (!fileExists(firstArg)) {
-        std::cerr << "Error: File '" << firstArg << "' not found!" << std::endl;
-        std::cerr << "\nMake sure the file exists and the path is correct." << std::endl;
-        std::cout << "\nPress Enter to exit...";
-        std::cin.get();
-        return 1;
-    }
+    auto* opt2 = group->addCheckBox(L"Option 2");
+    opt2->position(10, 75)->size(150, 20);
     
-    // Run the script
-    std::cout << "Loading script: " << firstArg << std::endl;
-    std::cout << "Initializing UIBro..." << std::endl;
+    auto* opt3 = group->addCheckBox(L"Option 3");
+    opt3->position(10, 100)->size(150, 20);
     
-    UIBro::Window* window = UIBro::Script::runFile(firstArg);
+    // Run the app
+    int nRet = window.run();
     
-    if (!window) {
-        std::cerr << "\nError: Failed to create window from script!" << std::endl;
-        std::cerr << "Check the script syntax and try again." << std::endl;
-        std::cout << "\nPress Enter to exit...";
-        std::cin.get();
-        return 1;
-    }
+    _Module.Term();
+    ::CoUninitialize();
     
-    std::cout << "Script loaded successfully!" << std::endl;
-    std::cout << "Starting UI..." << std::endl;
-    
-    // Close console and run GUI
-    FreeConsole();
-    return window->run();
+    return nRet;
 }
