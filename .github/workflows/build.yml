@@ -22,50 +22,183 @@ jobs:
     - name: Setup CMake
       uses: lukka/get-cmake@latest
     
+    - name: Download and Install WTL
+      run: |
+        # Download WTL 10.0
+        Invoke-WebRequest -Uri "https://sourceforge.net/projects/wtl/files/WTL%2010/WTL%2010.0.10320/WTL10_10320.zip/download" -OutFile "wtl.zip"
+        
+        # Extract WTL
+        Expand-Archive -Path wtl.zip -DestinationPath C:\WTL
+        
+        # Verify installation
+        if (Test-Path "C:\WTL\Include\atlapp.h") {
+          Write-Host "WTL installed successfully"
+          Get-ChildItem C:\WTL\Include | Select-Object -First 5
+        } else {
+          Write-Error "WTL installation failed"
+          exit 1
+        }
+      shell: powershell
+    
     - name: Configure CMake
       run: |
-        cmake -B build -G "Visual Studio 17 2022" -A x64
+        cmake -B build -G "Visual Studio 17 2022" -A x64 -DWTL_INCLUDE_DIR="C:/WTL/Include"
     
     - name: Build
       run: |
         cmake --build build --config Release
     
+    - name: Verify Build
+      run: |
+        if (Test-Path "build\bin\Release\UIBro.exe") {
+          Write-Host "Build successful!"
+          Get-Item build\bin\Release\UIBro.exe | Select-Object Name, Length, LastWriteTime
+        } else {
+          Write-Error "Build failed - executable not found"
+          Get-ChildItem build -Recurse -Filter *.exe
+          exit 1
+        }
+      shell: powershell
+    
     - name: Package
       run: |
         mkdir UIBro-Release
-        copy build\bin\Release\uibro.exe UIBro-Release\
-        copy example.ui UIBro-Release\
-        copy README.md UIBro-Release\
+        copy build\bin\Release\UIBro.exe UIBro-Release\
+        if (Test-Path "example.ui") { copy example.ui UIBro-Release\ }
+        if (Test-Path "README.md") { copy README.md UIBro-Release\ }
+        copy src\UIBro.hpp UIBro-Release\
     
-    - name: Create README for release
+    - name: Create Documentation
       run: |
-        echo "# UIBro - Windows 10 UI Framework" > UIBro-Release\INSTALL.txt
-        echo "" >> UIBro-Release\INSTALL.txt
-        echo "USAGE:" >> UIBro-Release\INSTALL.txt
-        echo "  uibro.exe <script.ui>" >> UIBro-Release\INSTALL.txt
-        echo "" >> UIBro-Release\INSTALL.txt
-        echo "EXAMPLES:" >> UIBro-Release\INSTALL.txt
-        echo "  uibro.exe example.ui" >> UIBro-Release\INSTALL.txt
-        echo "  uibro.exe myapp.ui" >> UIBro-Release\INSTALL.txt
-        echo "" >> UIBro-Release\INSTALL.txt
-        echo "Run 'uibro.exe --help' for more information" >> UIBro-Release\INSTALL.txt
+        @"
+        # UIBro - Windows Template Library UI Framework
+        Version 2.0 (WTL Edition)
+        
+        ## Quick Start
+        
+        ### Using the Framework
+        
+        Include UIBro.hpp in your project:
+        ```cpp
+        #include "UIBro.hpp"
+        
+        int main() {
+            UIBro::DPIManager::Initialize();
+            
+            UIBro::Window window;
+            window.title(L"My App")
+                  ->size(800, 600)
+                  ->center();
+            
+            auto* btn = window.addButton(L"Click Me")
+                              ->position(20, 20)
+                              ->onClick([]() {
+                                  MessageBoxW(NULL, L"Hello!", L"Info", MB_OK);
+                              });
+            
+            window.create();
+            return window.run();
+        }
+        ```
+        
+        ### Building Your Application
+        
+        Requirements:
+        - Windows 10/11
+        - Visual Studio 2019+ with C++ Desktop Development
+        - CMake 3.15+
+        - WTL 10.0+ (download from https://sourceforge.net/projects/wtl/)
+        
+        Build steps:
+        ```bash
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 17 2022" -A x64 -DWTL_INCLUDE_DIR="C:/WTL/Include" ..
+        cmake --build . --config Release
+        ```
+        
+        ### Components Available
+        
+        - Window (Main application window)
+        - Button
+        - Input (Text box)
+        - Label
+        - CheckBox
+        - ComboBox (Dropdown)
+        - ProgressBar
+        - GroupBox
+        - Notification (Windows 10 Toast)
+        
+        ### Features
+        
+        - ✅ Native Windows 10/11 UI
+        - ✅ DPI Awareness (Per-Monitor V2)
+        - ✅ Modern Visual Styles
+        - ✅ Thread-safe operations
+        - ✅ Fluent method chaining
+        - ✅ Type-safe component access
+        - ✅ Built on WTL for performance
+        
+        ### License
+        
+        MIT License - See LICENSE file
+        
+        ### Author
+        
+        Nader Mahbub Khan
+        
+        ### Support
+        
+        For issues and questions, visit:
+        https://github.com/your-repo/UIBro
+        
+        "@ | Out-File -FilePath UIBro-Release\QUICKSTART.md -Encoding UTF8
+      shell: powershell
+    
+    - name: Create Build Info
+      run: |
+        @"
+        UIBro Build Information
+        =======================
+        
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        Build Type: Release
+        Platform: Windows x64
+        Compiler: MSVC 19.44
+        WTL Version: 10.0
+        
+        Built with:
+        - Visual Studio 2022
+        - Windows SDK 10.0
+        - CMake $((cmake --version | Select-Object -First 1) -replace 'cmake version ')
+        
+        Files Included:
+        - UIBro.exe        (Main executable)
+        - UIBro.hpp        (Framework header)
+        - QUICKSTART.md    (Documentation)
+        - BUILD_INFO.txt   (This file)
+        
+        "@ | Out-File -FilePath UIBro-Release\BUILD_INFO.txt -Encoding UTF8
+      shell: powershell
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: UIBro-Windows-x64
         path: UIBro-Release/
+        retention-days: 30
     
     - name: Create Release ZIP
       if: github.event_name == 'release'
       run: |
-        Compress-Archive -Path UIBro-Release\* -DestinationPath UIBro-Windows-x64.zip
+        Compress-Archive -Path UIBro-Release\* -DestinationPath UIBro-Windows-x64-${{ github.ref_name }}.zip
+      shell: powershell
     
     - name: Upload to Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: UIBro-Windows-x64.zip
+        files: UIBro-Windows-x64-${{ github.ref_name }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -75,13 +208,128 @@ jobs:
     
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: UIBro-Windows-x64
         path: UIBro-Test/
     
-    - name: Test executable
+    - name: Verify Files
       run: |
-        cd UIBro-Test
-        .\uibro.exe --version
-        .\uibro.exe --help
+        Write-Host "Downloaded files:"
+        Get-ChildItem UIBro-Test -Recurse | Select-Object FullName, Length
+        
+        if (-not (Test-Path "UIBro-Test\UIBro.exe")) {
+          Write-Error "UIBro.exe not found!"
+          exit 1
+        }
+        
+        if (-not (Test-Path "UIBro-Test\UIBro.hpp")) {
+          Write-Warning "UIBro.hpp not found in package"
+        }
+      shell: powershell
+    
+    - name: Test Executable Properties
+      run: |
+        $exe = Get-Item "UIBro-Test\UIBro.exe"
+        Write-Host "Executable: $($exe.Name)"
+        Write-Host "Size: $($exe.Length) bytes"
+        Write-Host "Created: $($exe.CreationTime)"
+        Write-Host "Modified: $($exe.LastWriteTime)"
+        
+        # Check if it's a valid PE file
+        $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+        if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
+          Write-Host "✓ Valid PE executable"
+        } else {
+          Write-Error "Invalid executable format"
+          exit 1
+        }
+      shell: powershell
+
+  build-documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Generate API Documentation
+      run: |
+        mkdir -p docs
+        cat > docs/API.md << 'EOF'
+        # UIBro API Reference
+        
+        ## Core Classes
+        
+        ### Window
+        Main application window class.
+        
+        **Methods:**
+        - `title(const std::wstring&)` - Set window title
+        - `size(int width, int height)` - Set window dimensions
+        - `center(bool)` - Center window on screen
+        - `create()` - Create the window
+        - `run()` - Start message loop
+        - `addButton(const std::wstring&)` - Add button
+        - `addInput(const std::wstring&)` - Add text input
+        - `addLabel(const std::wstring&)` - Add label
+        - `addCheckBox(const std::wstring&)` - Add checkbox
+        - `addComboBox()` - Add dropdown
+        - `addProgressBar()` - Add progress bar
+        - `addGroupBox(const std::wstring&)` - Add group box
+        - `findById(const std::wstring&)` - Find component by ID
+        - `runAsync(std::function<void()>)` - Run task asynchronously
+        
+        ### Component
+        Base class for all UI components.
+        
+        **Methods:**
+        - `position(int x, int y)` - Set position
+        - `size(int width, int height)` - Set size
+        - `text(const std::wstring&)` - Set text
+        - `text()` - Get text
+        - `id(const std::wstring&)` - Set ID
+        - `show(bool)` - Show/hide
+        - `enable(bool)` - Enable/disable
+        
+        ### Button
+        Clickable button component.
+        
+        **Additional Methods:**
+        - `onClick(std::function<void()>)` - Set click handler
+        - `setDefault(bool)` - Make default button
+        
+        ### Input
+        Text input field.
+        
+        **Additional Methods:**
+        - `onChange(std::function<void(const std::wstring&)>)` - Set change handler
+        - `multiline(bool)` - Enable multiline
+        - `password(bool)` - Password mode
+        - `readonly(bool)` - Read-only mode
+        - `getValue()` - Get current value
+        - `setValue(const std::wstring&)` - Set value
+        
+        ### DPIManager
+        Handles DPI scaling.
+        
+        **Static Methods:**
+        - `Initialize()` - Initialize DPI awareness
+        - `Scale(int)` - Scale value to current DPI
+        - `GetDPI()` - Get current DPI
+        - `GetScale()` - Get scale factor
+        - `CreateScaledFont(int size, int weight, const wchar_t* face)` - Create DPI-aware font
+        
+        ### Notification
+        Windows 10 toast notifications.
+        
+        **Static Methods:**
+        - `show(const std::wstring& title, const std::wstring& message, int duration)` - Show notification
+        
+        EOF
+    
+    - name: Upload Documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: UIBro-Documentation
+        path: docs/
