@@ -25,7 +25,7 @@ jobs:
     - name: Download and Install WTL
       run: |
         # Download WTL 10.0
-        Invoke-WebRequest -Uri "https://sourceforge.net/projects/wtl/files/WTL%2010/WTL%2010.0.10320/WTL10_10320.zip/download" -OutFile "wtl.zip"
+        Invoke-WebRequest -Uri "https://altushost-swe.dl.sourceforge.net/project/wtl/WTL%2010/WTL%2010.0.10320%20Release/WTL10_10320_Release.zip?viasf=1" -OutFile "wtl.zip"
         
         # Extract WTL
         Expand-Archive -Path wtl.zip -DestinationPath C:\WTL
