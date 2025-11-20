@@ -1,0 +1,87 @@
+name: Build UIBro
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ created ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v1.1
+    
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "Visual Studio 17 2022" -A x64
+    
+    - name: Build
+      run: |
+        cmake --build build --config Release
+    
+    - name: Package
+      run: |
+        mkdir UIBro-Release
+        copy build\bin\Release\uibro.exe UIBro-Release\
+        copy example.ui UIBro-Release\
+        copy README.md UIBro-Release\
+    
+    - name: Create README for release
+      run: |
+        echo "# UIBro - Windows 10 UI Framework" > UIBro-Release\INSTALL.txt
+        echo "" >> UIBro-Release\INSTALL.txt
+        echo "USAGE:" >> UIBro-Release\INSTALL.txt
+        echo "  uibro.exe <script.ui>" >> UIBro-Release\INSTALL.txt
+        echo "" >> UIBro-Release\INSTALL.txt
+        echo "EXAMPLES:" >> UIBro-Release\INSTALL.txt
+        echo "  uibro.exe example.ui" >> UIBro-Release\INSTALL.txt
+        echo "  uibro.exe myapp.ui" >> UIBro-Release\INSTALL.txt
+        echo "" >> UIBro-Release\INSTALL.txt
+        echo "Run 'uibro.exe --help' for more information" >> UIBro-Release\INSTALL.txt
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: UIBro-Windows-x64
+        path: UIBro-Release/
+    
+    - name: Create Release ZIP
+      if: github.event_name == 'release'
+      run: |
+        Compress-Archive -Path UIBro-Release\* -DestinationPath UIBro-Windows-x64.zip
+    
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: UIBro-Windows-x64.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-build:
+    runs-on: windows-latest
+    needs: build-windows
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: UIBro-Windows-x64
+        path: UIBro-Test/
+    
+    - name: Test executable
+      run: |
+        cd UIBro-Test
+        .\uibro.exe --version
+        .\uibro.exe --help
