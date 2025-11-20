@@ -124,22 +124,6 @@ install(FILES
     DESTINATION include
 )
 
-# Create examples directory
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/examples")
-
-# Optional: Add testing
-option(BUILD_TESTS "Build test suite" OFF)
-if(BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
-# Optional: Add examples
-option(BUILD_EXAMPLES "Build examples" ON)
-if(BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
-
 # Print build configuration
 message(STATUS "")
 message(STATUS "UIBro Configuration:")
