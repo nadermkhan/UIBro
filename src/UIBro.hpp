@@ -29,6 +29,7 @@ extern CAppModule _Module;
 #include <atlmisc.h>
 #include <atlcrack.h>
 #include <atltheme.h>
+#include <dwmapi.h>
 
 #include <iostream>
 #include <string>
@@ -56,6 +57,11 @@ extern CAppModule _Module;
 
 // Initialize WTL App Module
 CAppModule _Module;
+
+// Define IDR_MAINFRAME if not defined
+#ifndef IDR_MAINFRAME
+#define IDR_MAINFRAME 100
+#endif
 
 namespace UIBro {
 
@@ -260,7 +266,7 @@ public:
         width_ = DPIManager::Scale(100);
         height_ = DPIManager::Scale(30);
         
-        btn_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        btn_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                    text_.c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON);
         
         hwnd_ = btn_.m_hWnd;
@@ -336,7 +342,7 @@ public:
         
         DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL;
         
-        edit_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        edit_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                     L"", style, WS_EX_CLIENTEDGE);
         
         hwnd_ = edit_.m_hWnd;
@@ -411,7 +417,7 @@ public:
     
     std::wstring getValue() const {
         if (!edit_.IsWindow()) return L"";
-        WTL::CString str;
+        ATL::CString str;
         edit_.GetWindowText(str);
         return str.GetString();
     }
@@ -439,7 +445,7 @@ public:
         width_ = DPIManager::Scale(200);
         height_ = DPIManager::Scale(20);
         
-        static_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        static_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                       text_.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT);
         
         hwnd_ = static_.m_hWnd;
@@ -501,7 +507,7 @@ public:
         width_ = DPIManager::Scale(200);
         height_ = DPIManager::Scale(20);
         
-        check_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        check_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                      text_.c_str(), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX);
         
         hwnd_ = check_.m_hWnd;
@@ -565,7 +571,7 @@ public:
         width_ = DPIManager::Scale(200);
         height_ = DPIManager::Scale(200);
         
-        combo_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        combo_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                      NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL);
         
         hwnd_ = combo_.m_hWnd;
@@ -640,7 +646,7 @@ public:
         width_ = DPIManager::Scale(200);
         height_ = DPIManager::Scale(20);
         
-        progress_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        progress_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                         NULL, WS_CHILD | WS_VISIBLE | PBS_SMOOTH);
         
         hwnd_ = progress_.m_hWnd;
@@ -704,7 +710,7 @@ public:
         width_ = DPIManager::Scale(300);
         height_ = DPIManager::Scale(200);
         
-        group_.Create(parent_, WTL::CRect(x_, y_, x_ + width_, y_ + height_),
+        group_.Create(parent_, ATL::CRect(x_, y_, x_ + width_, y_ + height_),
                      text_.c_str(), WS_CHILD | WS_VISIBLE | BS_GROUPBOX);
         
         hwnd_ = group_.m_hWnd;
@@ -856,11 +862,11 @@ public:
         }
     }
     
-    int OnCreate(LPCREATESTRUCT lpcs) {
+    int OnCreate(LPCREATESTRUCT /*lpcs*/) {
         ::SetWindowTheme(m_hWnd, L"Explorer", NULL);
         
         BOOL useDarkMode = FALSE;
-        DwmSetWindowAttribute(m_hWnd, 19, &useDarkMode, sizeof(useDarkMode));
+        ::DwmSetWindowAttribute(m_hWnd, 19, &useDarkMode, sizeof(useDarkMode));
         
         running_ = true;
         messageThread_ = std::thread(&Window::processMessageQueue, this);
@@ -877,12 +883,12 @@ public:
         DestroyWindow();
     }
     
-    HBRUSH OnCtlColorStatic(WTL::CDCHandle dc, WTL::CStatic wndStatic) {
+    HBRUSH OnCtlColorStatic(WTL::CDCHandle dc, WTL::CStatic /*wndStatic*/) {
         dc.SetBkColor(RGB(240, 240, 240));
         return bgBrush_;
     }
     
-    void OnDpiChanged(UINT nDpiX, UINT nDpiY, PRECT pRect) {
+    void OnDpiChanged(UINT /*nDpiX*/, UINT /*nDpiY*/, PRECT pRect) {
         DPIManager::Initialize();
         ::SetWindowPos(m_hWnd, NULL, 
             pRect->left, pRect->top,
@@ -891,7 +897,7 @@ public:
             SWP_NOZORDER | SWP_NOACTIVATE);
     }
     
-    LRESULT OnButtonClicked(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled) {
+    LRESULT OnButtonClicked(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/) {
         for (auto& comp : components_) {
             if (comp->getHandle() == hWndCtl) {
                 if (auto btn = dynamic_cast<Button*>(comp.get())) {
@@ -906,7 +912,7 @@ public:
         return 0;
     }
     
-    LRESULT OnEditChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled) {
+    LRESULT OnEditChanged(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/) {
         for (auto& comp : components_) {
             if (comp->getHandle() == hWndCtl) {
                 if (auto input = dynamic_cast<Input*>(comp.get())) {
@@ -918,7 +924,7 @@ public:
         return 0;
     }
     
-    LRESULT OnComboSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled) {
+    LRESULT OnComboSelChange(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/) {
         for (auto& comp : components_) {
             if (comp->getHandle() == hWndCtl) {
                 if (auto combo = dynamic_cast<ComboBox*>(comp.get())) {
@@ -1038,7 +1044,7 @@ public:
     void create() {
         if (IsWindow()) return;
         
-        WTL::CRect rect(0, 0, width_, height_);
+        ATL::CRect rect(0, 0, width_, height_);
         
         HWND hwnd = Create(NULL, rect, title_.c_str(), 
                           WS_OVERLAPPEDWINDOW | WS_VISIBLE);
