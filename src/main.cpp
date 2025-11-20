@@ -15,35 +15,41 @@ USAGE:
 
 EXAMPLES:
     uibro app.ui            Run app.ui script
-    uibro example.ui        Run the example script
+    uibro myform.ui         Run myform.ui script
 
 SCRIPT SYNTAX:
+    // Create window
     win = Window.title("My App").size(800, 600).center();
-    btn = win.addButton("Click Me").position(10, 10).size(100, 30);
+    
+    // Add components
+    label = win.addLabel("Hello World").position(20, 20).size(300, 30);
+    btn = win.addButton("Click Me").position(20, 60).size(100, 30);
+    input = win.addInput("Type here").position(20, 100).size(200, 24);
+    
+    // Add event handlers
     btn.onClick();
     
+    // Conditional logic
     if (condition) {
         Notification.show("Title", "Message");
     }
 
-For more information, visit: https://github.com/yourusername/UIBro
+COMPONENTS:
+    Window, Button, Label, Input, CheckBox, ComboBox, 
+    ProgressBar, GroupBox, Notification
+
+For more information, visit: https://github.com/nadermkhan/UIBro/
 )" << std::endl;
 }
 
 void printVersion() {
     std::cout << "UIBro v3.1.0 - Windows 10 Native UI Framework" << std::endl;
     std::cout << "Built with MSVC - Windows Runtime" << std::endl;
+    std::cout << "Copyright (c) 2024 - MIT License" << std::endl;
 }
 
 bool fileExists(const std::string& filename) {
     return PathFileExistsA(filename.c_str()) == TRUE;
-}
-
-std::string getExecutableDirectory() {
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);
-    std::string::size_type pos = std::string(buffer).find_last_of("\\/");
-    return std::string(buffer).substr(0, pos);
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
@@ -63,34 +69,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     LocalFree(argv);
     
     // Allocate console for output
-    if (argc > 1) {
-        AllocConsole();
-        FILE* fp;
-        freopen_s(&fp, "CONOUT$", "w", stdout);
-        freopen_s(&fp, "CONOUT$", "w", stderr);
-    }
+    AllocConsole();
+    FILE* fp;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+    freopen_s(&fp, "CONIN$", "r", stdin);
     
     // Parse arguments
     if (argc == 1) {
         // No arguments - show usage
         printUsage();
-        
-        // Run default example if it exists
-        std::string exeDir = getExecutableDirectory();
-        std::string examplePath = exeDir + "\\example.ui";
-        
-        if (fileExists(examplePath)) {
-            std::cout << "\nRunning example.ui...\n" << std::endl;
-            UIBro::Window* window = UIBro::Script::runFile(examplePath);
-            if (window) {
-                FreeConsole();
-                return window->run();
-            }
-        }
-        
+        std::cout << "\nError: No script file specified!" << std::endl;
         std::cout << "\nPress Enter to exit...";
         std::cin.get();
-        return 0;
+        return 1;
     }
     
     std::string firstArg = args[1];
@@ -113,6 +105,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     // Check if file exists
     if (!fileExists(firstArg)) {
         std::cerr << "Error: File '" << firstArg << "' not found!" << std::endl;
+        std::cerr << "\nMake sure the file exists and the path is correct." << std::endl;
         std::cout << "\nPress Enter to exit...";
         std::cin.get();
         return 1;
@@ -120,14 +113,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     
     // Run the script
     std::cout << "Loading script: " << firstArg << std::endl;
+    std::cout << "Initializing UIBro..." << std::endl;
+    
     UIBro::Window* window = UIBro::Script::runFile(firstArg);
     
     if (!window) {
-        std::cerr << "Error: Failed to create window from script!" << std::endl;
+        std::cerr << "\nError: Failed to create window from script!" << std::endl;
+        std::cerr << "Check the script syntax and try again." << std::endl;
         std::cout << "\nPress Enter to exit...";
         std::cin.get();
         return 1;
     }
+    
+    std::cout << "Script loaded successfully!" << std::endl;
+    std::cout << "Starting UI..." << std::endl;
     
     // Close console and run GUI
     FreeConsole();
